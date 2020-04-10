@@ -1,0 +1,44 @@
+
+# Caching so the next build will be fast too.
+cache:
+  directories:
+  - $HOME/.ghc
+  - $HOME/.stack
+  - $HOME/.local
+
+matrix:
+  include:
+  - { env: BUILD=stack RESOLVER=lts-3.22 STACK_VER=2.1.3, compiler: ghc-7.10.2, language: generic, addons: { apt: { packages: [ libgmp-dev ] } } }
+  - { env: BUILD=stack RESOLVER=lts-9.21 STACK_VER=2.1.3, compiler: ghc-8.0.2,  language: generic, addons: { apt: { packages: [ libgmp-dev ] } } }
+  - { env: BUILD=stack RESOLVER=lts-3.22 STACK_VER=1.9.3, compiler: ghc-7.10.2, language: generic, addons: { apt: { packages: [ libgmp-dev ] } } }
+  - { env: BUILD=stack RESOLVER=lts-9.21 STACK_VER=1.9.3, compiler: ghc-8.0.2,  language: generic, addons: { apt: { packages: [ libgmp-dev ] } } }
+
+install:
+  - export PATH=$HOME/.local/bin::$HOME/.cabal/bin:$PATH
+  - mkdir -p ~/.local/bin
+  - |
+    case "$BUILD" in
+      stack)
+        if [ `uname` = "Darwin" ]
+        then
+          travis_retry curl --insecure -L "https://github.com/commercialhaskell/stack/releases/download/v${STACK_VER}/stack-${STACK_VER}-osx-x86_64.tar.gz" | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
+        else
+          travis_retry curl -L "https://github.com/commercialhaskell/stack/releases/download/v${STACK_VER}/stack-${STACK_VER}-linux-x86_64.tar.gz" | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+        fi
+      ;;
+    esac
+
+script:
+- |
+  set -ex
+  case "$BUILD" in
+    stack)
+      stack --version
+      echo "resolver: $RESOLVER"
+      stack --resolver "$RESOLVER" --no-terminal setup
+      stack --resolver "$RESOLVER" --no-terminal build happy
+    ;;
+  esac
+  set +ex
+
+
